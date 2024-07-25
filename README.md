@@ -8,5 +8,15 @@ Fast photochemical oxidation of proteins ([FPOP](https://www.ncbi.nlm.nih.gov/pm
 ## Using FragPipe output with coADAPTr
 In order to make possible fragPipe output analysis with coADAPTr a script that can be run thru terminal is made avaialble in this repository (full integration into FragPipe coming soon). Detailed instrcution follow so any user can run the script (Graphical user Interface is included for FragPipe output folder selection). 
 
-#### 1. Download repository code
+  1. Download the whole fragPipe-to-coADAPTr repo (to have a local copy of license and README files) or download python file only
+  2. In the same folder where fromFragPipe_tocoADAPTr.py is located open a terminal window (In Windows Powershell is recommended)
+  3. Run the command: python .\fromFragPipe_tocoADAPTr.py ("python .\fromFragPipe_tocoADAPTr.py False" is also acceptable)
+##### Note: 
+##### - This requires a working Python installation (preferable version 3.7 or above).
+##### - The script will check the Python version is the appropriate one and it will let the user know that it will create a copy of the orginal psm file name "fpop_psm.tsv.
+##### - To use overwrite mode run the command python .\fromFragPipe_tocoADAPTr.py True. This mode will write overwrite the psm file (the only modification is adding the FPOP only column)
+  4. A dialong window will appeared prompting to "Choose FragPipe results folder". Select desired results folder.
+  5. Script will start running
+
+
 
