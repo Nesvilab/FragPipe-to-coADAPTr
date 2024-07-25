@@ -118,7 +118,7 @@ def multiexperiment_psm(psmoverwrite = None):
             # if the item is a file
             subdiritem = os.path.join(folder, item)
 
-            print(f"subdirectory = {subdiritem}")
+            # print(f"subdirectory = {subdiritem}")
 
             subdirfiles = [x for x in os.listdir(subdiritem)]
 
