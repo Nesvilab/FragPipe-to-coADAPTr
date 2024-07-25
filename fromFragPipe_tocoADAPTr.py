@@ -9,74 +9,12 @@ import tkinter
 from tkinter import filedialog
 import pandas as pd
 import os
-from PyQt5 import QtWidgets
 import sys
-import re
-from itertools import combinations_with_replacement
-import io
+
 
 #set up Tkinter
 root = tkinter.Tk()
 root.withdraw()
-
-#Makes it possible to select directories which Tkinter apparently does not do easily
-CONFIG_FILE = 'config.txt'  # config file for saving last directory for fancy filedialog
-
-def get_data(config_file):
-    """
-    Load folders of data using custom FileDialog class
-    :param config_file: path to the config file with the initial directory for the file chooser
-    :return: list of strings of full system folder paths to the folders chosen, updated input_dir
-    """
-    input_dir = get_last_dir(config_file)
-
-    app = QtWidgets.QApplication(sys.argv)
-    ex = FileDialog(input_dir)
-    ex.show()
-    app.exec_()
-    files = ex.selectedFiles()
-
-    new_base_dir = os.path.dirname(files[0])
-    save_config(config_file, new_base_dir)
-    return files
-
-
-def get_last_dir(config_file):
-    """
-    parse the config file for the last directory used, to use as the initial directory when
-    opening the file chooser.
-    :param config_file: text file with a single directory (full system path) and nothing else
-    :return: (string) directory path
-    """
-    with open(config_file, 'r') as config:
-        line = config.readline()
-        return line
-
-
-def save_config(config_file, new_base_dir):
-    """
-    Update the config file with a new directory name
-    :param config_file: file path to update
-    :param new_base_dir: information to save in the config file
-    :return: void
-    """
-    with open(config_file, 'w') as config:
-        config.write(new_base_dir)
-
-
-
-class FileDialog(QtWidgets.QFileDialog):
-    """
-    File chooser for raw data, created after extensive searching on stack overflow
-    """
-    def __init__(self, input_dir, *args):
-        QtWidgets.QFileDialog.__init__(self, *args)
-        self.setOption(self.DontUseNativeDialog, True)
-        self.setFileMode(self.DirectoryOnly)
-        self.setDirectory(input_dir)
-
-        self.tree = self.findChild(QtWidgets.QTreeView)
-        self.tree.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
 
 def modstring_processing(assignedmod_str):
     """
@@ -162,42 +100,39 @@ def multiexperiment_psm(psmoverwrite = None):
     :return: void
     """
 
-    # Go thru all the directories outputed by FRAGPIpe for each analaysis
-    selected_dirs = get_data(CONFIG_FILE)
-    # main_dir = os.path.split(selected_dirs[0])[0]
+    folder = filedialog.askdirectory(title = "Choose FragPipe results folder")
+    os.chdir(folder)
 
-    #Folder that contains experiments. Folder where FRAGPIPE would store everything.
-    for folder in selected_dirs:
+    print(f"folder = {folder}")
+    diritems = [x for x in os.listdir(folder)]
+    # print(f"files = {diritems}")
 
-        os.chdir(folder)
+    # For each experiments
+    for item in diritems:
+        # print(f"item = {item}")
 
-        print(f"folder = {folder}")
-        diritems = [x for x in os.listdir(folder)]
-        # print(f"files = {diritems}")
+        # Continue if the item is not a folder
+        if item.find(".") > -1:
+            continue
+        else:
+            # if the item is a file
+            subdiritem = os.path.join(folder, item)
+
+            print(f"subdirectory = {subdiritem}")
+
+            subdirfiles = [x for x in os.listdir(subdiritem)]
+
+            # If calculating residues and mass shift modification from a psm.tsv file
+
+            for file in subdirfiles:
+                if "psm.tsv" == file:
+                    # print(f"file = {file}")
+                    filepath = os.path.join(subdiritem, file)
+                    psmwithFPOPcolumn(filepath, psmoverwrite)
 
 
-        #For each experiments
-        for item in diritems:
-            # print(f"item = {item}")
 
-            #Continue if the item is not a folder
-            if item.find(".") > -1:
-                continue
-            else:
-                #if the item is a file
-                subdiritem = os.path.join(folder,item)
 
-                print(f"subdirectory = {subdiritem}")
-
-                subdirfiles = [x for x in os.listdir(subdiritem)]
-
-                #If calculating residues and mass shift modification from a psm.tsv file
-
-                for file in subdirfiles:
-                    if "psm.tsv" == file:
-                        # print(f"file = {file}")
-                        filepath = os.path.join(subdiritem, file)
-                        psmwithFPOPcolumn(filepath, psmoverwrite)
 
 def main():
     """
