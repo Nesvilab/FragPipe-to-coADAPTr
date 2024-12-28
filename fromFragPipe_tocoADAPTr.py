@@ -177,7 +177,7 @@ def precursorwithFPOPcolumn(psmoverwrite_bool):
     if psmoverwrite_bool:
         outputfilename = os.path.join(outputdir, "report.tsv")
     else:
-        outputfilename = os.path.join(outputdir, "report_coADAPTr .tsv")
+        outputfilename = os.path.join(outputdir, "report_coADAPTr.tsv")
 
 
 
