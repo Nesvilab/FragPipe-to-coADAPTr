@@ -75,10 +75,23 @@ def modstring_processingDIA(massoffsets_str, unimodict_val):
             massshift = massoffsets_str[locations[0]:locations[1]]
             # Remove parenthesis
             massoffset = massshift[1:-1]
-            # Extract residue before the modification string
-            residuestr = massoffsets_str[locations[0] + abs(locations[0]-locations[1])]
+            # Extract residue after the modification string
+            truelocationoffset += abs(locations[0] - locations[1])
+            #Handeling n-termcases
+            if locations[0] == 0:
+                residuestr = massoffsets_str[locations[1]]
+                truelocation = 1
+            else:
+                try:
+                    residuestr = massoffsets_str[locations[1]]
 
-            truelocation = locations[0] + 1 - truelocationoffset
+                # Mod at the c-term
+                except IndexError:
+                    residuestr = massoffsets_str[locations[0]-1]
+                truelocation = locations[1] + 1 - truelocationoffset
+
+
+
 
             # print(f"moditem = {massoffset}")
             # For sanity check reconstrcut mass offset string (can simplified later)
@@ -95,7 +108,7 @@ def modstring_processingDIA(massoffsets_str, unimodict_val):
                 residuemassoffset = f"{truelocation}{residuestr}({round(float(massoffset), 4)})"
 
 
-            truelocationoffset += abs(locations[0]-locations[1])
+
             # Ignored C57 mods
             if residuemassoffset == "C(UniMod:4)":
                 continue
