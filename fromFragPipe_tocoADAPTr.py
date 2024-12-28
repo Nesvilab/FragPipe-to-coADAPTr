@@ -10,6 +10,8 @@ from tkinter import filedialog
 import pandas as pd
 import os
 import sys
+import re
+import numpy as np
 
 
 #set up Tkinter
@@ -24,7 +26,7 @@ def modstring_processing(assignedmod_str):
     """
     FPOP_massoffsetls = [15.9949, 31.9898, 47.9847, 13.9793, -43.0534,
                          -22.0320, -23.0159, -10.0319, 4.9735, -30.0106, -27.9949, -43.9898,
-                         -25.0316, -9.0367]
+                         -25.0316, -9.0367, 67.9874]
     returnls = []
     # Iterate over proteins
     if isinstance(assignedmod_str, str):
@@ -41,6 +43,138 @@ def modstring_processing(assignedmod_str):
 
     return returnstr
 
+def modstring_processingDIA(massoffsets_str, unimodict_val):
+    """
+    Function to select FPOP mods only
+    :param assignedmod_str:str
+    :return: str
+    """
+    print(massoffsets_str)
+
+    outls = []
+    FPOP_massoffsetls = [15.9949, 31.9898, 47.9847, 13.9793, -43.0534,
+                         -22.0320, -23.0159, -10.0319, 4.9735, -30.0106, -27.9949, -43.9898,
+                         -25.0316, -9.0367, 67.9874]
+
+
+
+    # Including localization
+    modregex = re.compile(
+        "\([0-9]*.[0-9]*\)|\(Unimod:[0-9]*.[0-9]*\)",
+        re.I)
+    mod = modregex.finditer(massoffsets_str)
+    if mod:
+        # If modifications were found iteriate over each one
+        truelocationoffset = 0
+        for item in mod:
+            print(f"moditem = {item}")
+            # get modification string
+            locations = item.span()
+
+            # Extract modification
+            massshift = massoffsets_str[locations[0]:locations[1]]
+            # Remove parenthesis
+            massoffset = massshift[1:-1]
+            # Extract residue before the modification string
+            residuestr = massoffsets_str[locations[0] + abs(locations[0]-locations[1])]
+
+            truelocation = locations[0] + 1 - truelocationoffset
+
+            # print(f"moditem = {massoffset}")
+            # For sanity check reconstrcut mass offset string (can simplified later)
+            # print(unimodict)
+
+            print(truelocationoffset)
+
+            if "UniMod" in massoffset:
+                massoffset_spl = massoffset.split(":")
+                massoffset_unimodval = massoffset_spl[1]
+                massoffset_val = unimodict_val[int(massoffset_unimodval)]
+                residuemassoffset = f"{truelocation}{residuestr}({massoffset_val})"
+            else:
+                residuemassoffset = f"{truelocation}{residuestr}({round(float(massoffset), 4)})"
+
+
+            truelocationoffset += abs(locations[0]-locations[1])
+            # Ignored C57 mods
+            if residuemassoffset == "C(UniMod:4)":
+                continue
+            else:
+                outls.append(residuemassoffset)
+
+
+
+    outstr = ','.join(outls)
+
+    return outstr
+
+
+def precursorwithFPOPcolumn(psmoverwrite_bool):
+    """
+    Function to add FPOP only mods column
+    :param FilePath: Absolute path to tsv file
+    :param file_type: File type (not extension but is it a psm, peptide or protein TSV file)
+    :return: it depends
+    """
+
+    #Starting analysis
+
+    FilePath = filedialog.askopenfilename(title="Choose report file")
+    print(f"~*~*~Reading file = {FilePath}~*~*~")
+
+
+    #Create dataframe from file
+    dataframe_item = pd.read_csv(FilePath, sep='\t')
+
+    #How many lines there are in file
+    rows = dataframe_item.shape[0]
+    print(f"rows = {rows}")
+
+    modifiedpsms =dataframe_item["Modified.Sequence"]
+
+    fragpipeinstallfolder = filedialog.askdirectory(title="Choose FragPipe Installation folder")
+    unimodfile_path = os.path.join(fragpipeinstallfolder, "tools", "UniModData.tsv")
+    unimoddf = pd.read_csv(unimodfile_path, sep="\t")
+
+    # unimod dictionary
+    unimodict = {}
+    for idx in unimoddf.index:
+        monomass = round(unimoddf.loc[idx, "monoMass"], 4)
+        unimodid = unimoddf.loc[idx, "id"]
+
+        if np.isnan(unimodid) or unimodid in unimodict.keys():
+            continue
+        else:
+            unimodict[int(unimodid)] = float(monomass)
+
+
+    FPOPonlycol = []
+    # Iteriate over modified PSMs
+    for modstring in modifiedpsms:
+        # print(modstring)
+        newstr = modstring_processingDIA(modstring, unimodict)
+        FPOPonlycol.append(newstr)
+
+
+    dataframe_item.insert(16, "FPOP Modifications", FPOPonlycol, True)
+
+    outputdir = os.path.dirname(FilePath)
+
+    #If user want to keep a psm file copy without FPOP column
+    if psmoverwrite_bool:
+        outputfilename = os.path.join(outputdir, "report.tsv")
+    else:
+        outputfilename = os.path.join(outputdir, "report_coADAPTr .tsv")
+
+
+
+
+    dataframe_item.to_csv(outputfilename, sep = "\t", index=False)
+
+    # columns = dataframe_item.columns
+    # print(columns)
+
+    # print(f"Priot to error = {file_type}")
 
 def psmwithFPOPcolumn(FilePath, psmoverwrite_bool):
     """
@@ -91,7 +225,6 @@ def psmwithFPOPcolumn(FilePath, psmoverwrite_bool):
     # print(columns)
 
     # print(f"Priot to error = {file_type}")
-
 
 def multiexperiment_psm(psmoverwrite = None):
     """
@@ -186,8 +319,9 @@ def main():
 
 if __name__ == '__main__':
 
-    main()
+    # main()
 
+    precursorwithFPOPcolumn(False)
 
 
 
