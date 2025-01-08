@@ -12,7 +12,7 @@ import os
 import sys
 import re
 import numpy as np
-
+from pyteomics import mass
 
 #set up Tkinter
 root = tkinter.Tk()
@@ -52,6 +52,7 @@ def modstring_processingDIA(massoffsets_str, unimodict_val):
     print(massoffsets_str)
 
     outls = []
+
     FPOP_massoffsetls = [15.9949, 31.9898, 47.9847, 13.9793, -43.0534,
                          -22.0320, -23.0159, -10.0319, 4.9735, -30.0106, -27.9949, -43.9898,
                          -25.0316, -9.0367, 67.9874]
@@ -103,17 +104,23 @@ def modstring_processingDIA(massoffsets_str, unimodict_val):
                 massoffset_spl = massoffset.split(":")
                 massoffset_unimodval = massoffset_spl[1]
                 massoffset_val = unimodict_val[int(massoffset_unimodval)]
-                residuemassoffset = f"{truelocation}{residuestr}({massoffset_val})"
+                if massoffset_val in FPOP_massoffsetls:
+                    residuemassoffset = f"{truelocation}{residuestr}({massoffset_val})"
+                    outls.append(residuemassoffset)
             else:
-                residuemassoffset = f"{truelocation}{residuestr}({round(float(massoffset), 4)})"
+                if residuestr != "X":
+                    residue_mw = mass.calculate_mass(residuestr) - mass.calculate_mass(formula='H2O')
+                else:
+                    residue_mw = mass.calculate_mass("K") - mass.calculate_mass(formula='H2O')
+                residue_mod = float(massoffset) - residue_mw
+
+                if round(float(residue_mod), 4) in FPOP_massoffsetls:
+                    residuemassoffset = f"{truelocation}{residuestr}({round(float(residue_mod), 4)})"
+                    outls.append(residuemassoffset)
 
 
 
-            # Ignored C57 mods
-            if residuemassoffset == "C(UniMod:4)":
-                continue
-            else:
-                outls.append(residuemassoffset)
+
 
 
 
