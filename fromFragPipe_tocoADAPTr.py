@@ -43,93 +43,83 @@ def modstring_processing(assignedmod_str):
 
     return returnstr
 
-def modstring_processingDIA(massoffsets_str, unimodict_val):
+def modstring_processingDIA(massoffsets_str, unimodict_val, FPOP_massoffsetls, nolocation=False):
     """
     Function to select FPOP mods only
     :param assignedmod_str:str
     :return: str
     """
-    print(massoffsets_str)
+    # print(massoffsets_str)
 
     outls = []
 
-    FPOP_massoffsetls = [15.9949, 31.9898, 47.9847, 13.9793, -43.0534,
-                         -22.0320, -23.0159, -10.0319, 4.9735, -30.0106, -27.9949, -43.9898,
-                         -25.0316, -9.0367, 67.9874]
-
-
-
     # Including localization
     modregex = re.compile(
-        "\([0-9]*.[0-9]*\)|\(Unimod:[0-9]*.[0-9]*\)",
+        ".[0-9]*\.[0-9]*.|\(Unimod:[0-9]*.[0-9]*\)",
         re.I)
     mod = modregex.finditer(massoffsets_str)
     if mod:
         # If modifications were found iteriate over each one
         truelocationoffset = 0
         for item in mod:
-            print(f"moditem = {item}")
+            # print(f"moditem = {item}")
             # get modification string
             locations = item.span()
 
             # Extract modification
             massshift = massoffsets_str[locations[0]:locations[1]]
             # Remove parenthesis
+
             massoffset = massshift[1:-1]
-            # Extract residue after the modification string
+            print(f"MOOOOOO: {massoffset}")
+            # Extract residue BEFORE the modification string
             truelocationoffset += abs(locations[0] - locations[1])
-            #Handeling n-termcases
-            if locations[0] == 0:
-                residuestr = massoffsets_str[locations[1]]
-                truelocation = 1
-            else:
-                try:
-                    residuestr = massoffsets_str[locations[1]]
+            residuestr = massoffsets_str[locations[0]-1]
+            #Take into account the modifications string when determining modification position int he modified peptide
+            truelocation = locations[1] - truelocationoffset
 
-                # Mod at the c-term
-                except IndexError:
-                    residuestr = massoffsets_str[locations[0]-1]
-                truelocation = locations[1] + 1 - truelocationoffset
-
-
-
+            # print(f"truelocation = {truelocation} residue = {residuestr}")
 
             # print(f"moditem = {massoffset}")
             # For sanity check reconstrcut mass offset string (can simplified later)
             # print(unimodict)
 
-            print(truelocationoffset)
+            # print(truelocationoffset)
 
             if "UniMod" in massoffset:
                 massoffset_spl = massoffset.split(":")
                 massoffset_unimodval = massoffset_spl[1]
                 massoffset_val = unimodict_val[int(massoffset_unimodval)]
                 if massoffset_val in FPOP_massoffsetls:
-                    residuemassoffset = f"{truelocation}{residuestr}({massoffset_val})"
+                    if nolocation:
+                        residuemassoffset = f"{residuestr}({massoffset_val})"
+                    else:
+                        residuemassoffset = f"{truelocation}{residuestr}({massoffset_val})"
                     outls.append(residuemassoffset)
             else:
-                if residuestr != "X":
-                    residue_mw = mass.calculate_mass(residuestr) - mass.calculate_mass(formula='H2O')
-                else:
-                    residue_mw = mass.calculate_mass("K") - mass.calculate_mass(formula='H2O')
-                residue_mod = float(massoffset) - residue_mw
+                # if residuestr != "X":
+                #     residue_mw = mass.calculate_mass(residuestr) - mass.calculate_mass(formula='H2O')
+                # else:
+                #     residue_mw = mass.calculate_mass("K") - mass.calculate_mass(formula='H2O')
+                # residue_mod = float(massoffset) - residue_mw
 
-                if round(float(residue_mod), 4) in FPOP_massoffsetls:
-                    residuemassoffset = f"{truelocation}{residuestr}({round(float(residue_mod), 4)})"
+                if round(float(massoffset), 4) in FPOP_massoffsetls:
+                    if nolocation:
+                        residuemassoffset = f"{residuestr}({round(float(massoffset), 4)})"
+                    else:
+                        residuemassoffset = f"{truelocation}{residuestr}({round(float(massoffset), 4)})"
                     outls.append(residuemassoffset)
 
+    if nolocation:
+        return outls
+    else:
+
+        outstr = ','.join(outls)
+
+        return outstr
 
 
-
-
-
-
-    outstr = ','.join(outls)
-
-    return outstr
-
-
-def precursorwithFPOPcolumn(psmoverwrite_bool):
+def precursorwithFPOPcolumn(psmoverwrite_bool, modsls):
     """
     Function to add FPOP only mods column
     :param FilePath: Absolute path to tsv file
@@ -152,8 +142,13 @@ def precursorwithFPOPcolumn(psmoverwrite_bool):
 
     modifiedpsms =dataframe_item["Modified.Sequence"]
 
-    fragpipeinstallfolder = filedialog.askdirectory(title="Choose FragPipe Installation folder")
-    unimodfile_path = os.path.join(fragpipeinstallfolder, "tools", "UniModData.tsv")
+    # fragpipeinstallfolder = filedialog.askdirectory(title="Choose FragPipe Installation folder")
+    # unimodfile_path = os.path.join(fragpipeinstallfolder, "tools", "UniModData.tsv")
+
+    # unimodfile_path = filedialog.askopenfilename(title="Choose UNIMOD file")
+    unimodfile_path = r"Z:\crojaram\UniModData.tsv"
+    print(f"~*~*~Reading file UNIMOD file= {unimodfile_path}~*~*~")
+
     unimoddf = pd.read_csv(unimodfile_path, sep="\t")
 
     # unimod dictionary
@@ -172,7 +167,7 @@ def precursorwithFPOPcolumn(psmoverwrite_bool):
     # Iteriate over modified PSMs
     for modstring in modifiedpsms:
         # print(modstring)
-        newstr = modstring_processingDIA(modstring, unimodict)
+        newstr = modstring_processingDIA(modstring, unimodict, modsls, False)
         FPOPonlycol.append(newstr)
 
 
@@ -182,9 +177,9 @@ def precursorwithFPOPcolumn(psmoverwrite_bool):
 
     #If user want to keep a psm file copy without FPOP column
     if psmoverwrite_bool:
-        outputfilename = os.path.join(outputdir, "report.tsv")
-    else:
         outputfilename = os.path.join(outputdir, "report_coADAPTr.tsv")
+    else:
+        outputfilename = os.path.join(outputdir, "report_coADAPTr-Modcolumn.tsv")
 
 
 
@@ -341,7 +336,14 @@ if __name__ == '__main__':
 
     # main()
 
-    precursorwithFPOPcolumn(False)
+    # listofmodstoextract = [15.9949, 31.9898, 47.9847, 13.9793, -43.0534,
+    #                      -22.0320, -23.0159, -10.0319, 4.9735, -30.0106, -27.9949, -43.9898,
+    #                      -25.0316, -9.0367, 67.9874]
+
+    # listofmodstoextract = [67.9874]
+    listofmodstoextract = [15.9949, 67.9874, 13.9793]
+
+    precursorwithFPOPcolumn(False, listofmodstoextract)
 
 
 
